@@ -54,9 +54,6 @@ from utils.general import (LOGGER, Profile, check_file, check_img_size, check_im
 from utils.torch_utils import select_device, smart_inference_mode
 
 
-
-
-
 @smart_inference_mode()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model path or triton URL
@@ -153,7 +150,7 @@ def run(
                 if not csv_path.is_file():
                     writer.writeheader()
                 writer.writerow(data)
-        labels_dict = {}
+
         # Process predictions
         for i, det in enumerate(pred):  # per image
             seen += 1
@@ -171,66 +168,47 @@ def run(
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
             if len(det):
-                detected_labels = []
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
-
-
+                detected_labels = set()
+                labels = set()
                 # Print results
                 for c in det[:, 5].unique():
                     n = (det[:, 5] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                    labels.add(names[int(c)])
+                    print(f"labels : {labels}")
+                    
+                    if labels == {'1', '2', '5', '3'}:
+                        read_data(1253)
+                        print("1253 true")
+                        
+                    elif labels == {'2', '7', '0', '5'}:
+                        read_data(2705)
+                        print("2705 true")
+                        
+                    elif labels == {'3', '6', '8', '5'}:
+                        read_data(3685)
+                        print("3685 true")
+                        
+                    elif labels == {'4', '2', '0', '9'}:
+                        read_data(4209)
+                        print("4209 true")
+                        
+                    elif labels == {'5', '9', '3'}:
+                        read_data(5593)
+                        print("5593 true") 
+                        
+                    elif labels == {'6', '9', '0', '1'}:
+                        read_data(6901)
+                        print("6901 true")
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     c = int(cls)  # integer class
-                    required_labels = set()
-                    if c in {1, 2, 5, 3}:
-                        detected_labels.append(c)
-                        required_labels = {1, 2, 5, 3}
-                    elif c in {2, 7, 0, 5}:
-                        detected_labels.append(c)
-                        required_labels = {2, 7, 0, 5}
-                    elif c in {3, 6, 8, 5}:
-                        detected_labels.append(c)
-                        required_labels = {3, 6, 8, 5}
-                    elif c in {4, 2, 0, 9}:
-                        detected_labels.append(c)
-                        required_labels = {4, 2, 0, 9}
-                    elif c in {5, 7, 9, 0}:
-                        detected_labels.append(c)
-                        required_labels = {5, 7, 9, 0}
-                    elif c in {6, 9, 0 ,1}:
-                        detected_labels.append(c)
-                        required_labels = {6, 9, 0, 1}
-                        
                     label = names[c] if hide_conf else f'{names[c]}'
                     confidence = float(conf)
                     confidence_str = f'{confidence:.2f}'
-
-                    if set(detected_labels).issuperset(required_labels):
-                        if set(detected_labels) == {1 ,2 ,5 ,3}:
-                            print("1")
-                            read_data(1)
-                            
-                        elif set(detected_labels) == {2, 7, 0, 5}:
-                            print("2")
-                            read_data(2)
-                        elif set(detected_labels) == {3, 6, 8, 5}:
-                            print("3")
-                            read_data(3)
-                        elif set(detected_labels) == {4, 2, 0, 9}:
-                            print("4")
-                            read_data(4)
-                        elif set(detected_labels) == {5, 7, 9, 0}:
-                            print("5")
-                            read_data(5)
-                        elif set(detected_labels) == {6, 9, 0, 1}:
-                            print("6")
-                            read_data(6)
-                        
-                        detected_labels = []
-                        required_labels = set()
 
                     if save_csv:
                         write_to_csv(p.name, label, confidence_str)
@@ -329,21 +307,23 @@ def parse_opt():
 def main(opt):
     check_requirements(ROOT / 'requirements.txt', exclude=('tensorboard', 'thop'))
     run(**vars(opt))
-    
+
 def on_connect(client, userdata, flags, rc):
     print('Connected to MQTT broker')
-    
+
+
 def on_publish(client, userdata, mid):
     print('Data published')
+
 
 # client.loop_start()  # Start the loop to process callbacks and handle reconnecting
 broker_address = 'test.mosquitto.org'  # MQTT 브로커 주소
 broker_port = 1883  # MQTT 브로커 포트
 
-port = "/dev/tty.usbserial-1130"
+port = "/dev/tty.wlan-debug"
 baudrate = 9600
-
-def read_data(self,number):
+ 
+def read_data(number):
     try:
         ser = serial.Serial(port, baudrate)
         # MQTT 클라이언트 초기화
@@ -351,19 +331,14 @@ def read_data(self,number):
         client.on_connect = on_connect
         client.on_publish = on_publish
         client.connect(broker_address, broker_port)
-        
+
         data = ser.readline().strip()
         if data:
-            client.publish(f"cow{number} ", data.decode())
-              
-
-        
-                   
+            client.publish("cow",number,data.decode('latin-1'))
+    
     except KeyboardInterrupt:
-        print("Program terminated.")
+        print("Program terminated")
 
-        
-        
 
 if __name__ == '__main__':
     opt = parse_opt()
